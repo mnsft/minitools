@@ -1,0 +1,803 @@
+<!-- v2.2 -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>spfManager</title>
+    <link href="https://minisoft.it/icons/fix.png" rel="shortcut icon" type="image/x-icon" />
+    <link href="https://minisoft.it/icons/fix.png" rel="apple-touch-icon" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.8/clipboard.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#006E81',
+                        'primary-dark': '#006E81',
+                        secondary: '#814000',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-100 flex flex-col min-h-screen">
+    <header class="bg-white border-b border-gray-200">
+        <div class="container mx-auto px-4 py-6 max-w-4xl">
+            <h1 class="text-3xl font-bold text-center text-gray-800">spfManager</h1>
+            <p class="text-gray-600 text-center mt-1">SPF Record Analyzer & Editor</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 max-w-4xl flex-grow">
+        <!-- Instructions Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Instructions</h2>
+            <div class="bg-slate-50 border-l-4 border-primary p-4 rounded-r">
+                <ol class="list-decimal pl-5 space-y-1">
+                    <li>Paste your existing SPF record or start with a new one</li>
+                    <li>Click "Analyze Record" to parse and validate the record</li>
+                    <li>Use the editor to add, edit, remove, or reorder mechanisms</li>
+                    <li>Copy the final SPF record and add it as a TXT record in your DNS settings</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Input Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <label for="spfInput" class="block text-sm font-medium text-gray-700 mb-2">Paste your existing SPF record or enter a new one:</label>
+            <textarea id="spfInput" placeholder="v=spf1 a mx include:_spf.google.com ~all" rows="3"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+            <div class="mt-4 flex justify-between">
+                <button id="analyzeBtn"
+                    class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition duration-200 focus:outline-none focus:ring-2 focus:ring-primary">
+                    Analyze Record
+                </button>
+                <button id="clearBtn"
+                    class="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-amber-700 transition duration-200 focus:outline-none focus:ring-2 focus:ring-secondary">
+                    Clear All
+                </button>
+            </div>
+        </div>
+
+        <!-- Analysis Section -->
+        <div id="analysisSection" class="hidden bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Analysis</h2>
+            <div id="analysisResults" class="space-y-3">
+                <!-- Results will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Editor Section -->
+        <div id="editorSection" class="hidden bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Edit Record</h2>
+
+            <!-- Version Selector -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">SPF Version</label>
+                <select id="versionSelect"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                    <option value="v=spf1">v=spf1 (Standard)</option>
+                </select>
+            </div>
+
+            <!-- Mechanisms List -->
+            <div class="mb-4">
+                <h3 class="text-md font-medium text-gray-700 mb-2">Current Mechanisms</h3>
+                <div id="mechanismsList" class="space-y-2">
+                    <!-- Mechanisms will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Add New Mechanism -->
+            <div class="mb-4">
+                <h3 class="text-md font-medium text-gray-700 mb-2">Add New Mechanism</h3>
+                <div class="flex flex-col sm:flex-row gap-2 mb-2">
+                    <select id="qualifierSelect"
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">Pass (+)</option>
+                        <option value="-">Fail (-)</option>
+                        <option value="~">SoftFail (~)</option>
+                        <option value="?">Neutral (?)</option>
+                    </select>
+                    <select id="mechanismTypeSelect"
+                        class="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="a">a (Domain's A Record)</option>
+                        <option value="mx">mx (Domain's MX Records)</option>
+                        <option value="include">include (Another Domain's SPF)</option>
+                        <option value="ip4">ip4 (IPv4 Address/Range)</option>
+                        <option value="ip6">ip6 (IPv6 Address/Range)</option>
+                        <option value="exists">exists (Domain Exists Check)</option>
+                        <option value="all">all (Default Policy)</option>
+                    </select>
+                </div>
+                <div id="mechanismValueContainer" class="mb-2">
+                    <input type="text" id="mechanismValue" placeholder="Value (e.g., domain.com, 192.168.1.1/24)"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <button id="addMechanismBtn"
+                    class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition duration-200 focus:outline-none focus:ring-2 focus:ring-primary">
+                    Add Mechanism
+                </button>
+            </div>
+        </div>
+
+        <!-- Result Section -->
+        <div id="resultSection" class="hidden bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Final SPF Record</h2>
+            <div class="relative">
+                <pre id="finalRecord" class="w-full p-3 bg-gray-800 text-white rounded-md overflow-x-auto"></pre>
+                <button id="copyBtn"
+                    class="absolute top-2 right-2 px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    data-clipboard-target="#finalRecord">
+                    Copy
+                </button>
+            </div>
+
+            <div class="mt-4">
+                <h3 class="text-md font-medium text-gray-700 mb-2">DNS Implementation</h3>
+                <p class="text-sm text-gray-600 mb-2">Add this as a TXT record in your domain's DNS settings:</p>
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700">
+                                <strong>Host/Name:</strong> @ or your domain name<br>
+                                <strong>Type:</strong> TXT<br>
+                                <strong>Value/Content:</strong> <span id="dnsValue"></span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div id="editModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">Edit Mechanism</h3>
+                    <button id="closeEditModal" class="text-gray-500 hover:text-gray-700">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Qualifier</label>
+                    <select id="editQualifier"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">Pass (+)</option>
+                        <option value="-">Fail (-)</option>
+                        <option value="~">SoftFail (~)</option>
+                        <option value="?">Neutral (?)</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Mechanism Type</label>
+                    <select id="editMechanismType"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="a">a (Domain's A Record)</option>
+                        <option value="mx">mx (Domain's MX Records)</option>
+                        <option value="include">include (Another Domain's SPF)</option>
+                        <option value="ip4">ip4 (IPv4 Address/Range)</option>
+                        <option value="ip6">ip6 (IPv6 Address/Range)</option>
+                        <option value="exists">exists (Domain Exists Check)</option>
+                        <option value="all">all (Default Policy)</option>
+                    </select>
+                </div>
+
+                <div id="editMechanismValueContainer" class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Value</label>
+                    <input type="text" id="editMechanismValue" placeholder="Value (e.g., domain.com, 192.168.1.1/24)"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                    <div id="cidrExplanation" class="hidden mt-2 text-xs text-gray-600 bg-gray-100 p-2 rounded">
+                        <p><strong>CIDR Notation:</strong></p>
+                        <p><strong>/32</strong> - Single IP address (default if omitted)</p>
+                        <p><strong>/24</strong> - Range of 256 IPs (192.168.1.0-192.168.1.255)</p>
+                        <p><strong>/16</strong> - Range of 65,536 IPs (192.168.0.0-192.168.255.255)</p>
+                    </div>
+                </div>
+
+                <input type="hidden" id="editingIndex" value="">
+
+                <div class="flex justify-end">
+                    <button id="saveEditBtn"
+                        class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition duration-200 focus:outline-none focus:ring-2 focus:ring-primary">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SPF Information Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">About SPF Records</h2>
+            <div class="space-y-3 text-sm text-gray-700">
+                <p><strong>SPF (Sender Policy Framework)</strong> is an email authentication method designed to detect forging sender addresses during the delivery of email.</p>
+                <p><strong>SPF Qualifiers:</strong></p>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><strong>+</strong> (Pass): The sender is authorized (default if omitted)</li>
+                    <li><strong>-</strong> (Fail): The sender is not authorized (recommended for 'all')</li>
+                    <li><strong>~</strong> (SoftFail): The sender is "probably" not authorized but not certain</li>
+                    <li><strong>?</strong> (Neutral): No policy statement (rarely used)</li>
+                </ul>
+                <p><strong>Common Mechanisms:</strong></p>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><strong>a</strong>: Authorizes the domain's A record IPs</li>
+                    <li><strong>mx</strong>: Authorizes the domain's MX record IPs</li>
+                    <li><strong>ip4/ip6</strong>: Authorizes specific IP addresses or ranges</li>
+                    <li><strong>include</strong>: Incorporates another domain's SPF record</li>
+                    <li><strong>all</strong>: Matches everything (should be the last mechanism)</li>
+                </ul>
+                <p><strong>CIDR Notation (for IP ranges):</strong></p>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><strong>/32</strong>: Single IP address (default if omitted)</li>
+                    <li><strong>/24</strong>: Range of 256 IP addresses (e.g., 192.168.1.0 to 192.168.1.255)</li>
+                    <li><strong>/16</strong>: Range of 65,536 IP addresses (e.g., 192.168.0.0 to 192.168.255.255)</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+        <div class="container mx-auto px-4 py-6 max-w-4xl">
+            <p class="text-gray-600 text-center">&copy; <a href="https://minisoft.it/" class="text-primary hover:text-primary-dark">Minisoft</a> — All rights reserved</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize clipboard.js
+            new ClipboardJS('#copyBtn');
+
+            // Elements
+            const spfInput = document.getElementById('spfInput');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const analysisSection = document.getElementById('analysisSection');
+            const analysisResults = document.getElementById('analysisResults');
+            const editorSection = document.getElementById('editorSection');
+            const mechanismsList = document.getElementById('mechanismsList');
+            const mechanismTypeSelect = document.getElementById('mechanismTypeSelect');
+            const mechanismValueContainer = document.getElementById('mechanismValueContainer');
+            const mechanismValue = document.getElementById('mechanismValue');
+            const qualifierSelect = document.getElementById('qualifierSelect');
+            const addMechanismBtn = document.getElementById('addMechanismBtn');
+            const resultSection = document.getElementById('resultSection');
+            const finalRecord = document.getElementById('finalRecord');
+            const dnsValue = document.getElementById('dnsValue');
+
+            // Edit modal elements and events
+            const editModal = document.getElementById('editModal');
+            const closeEditModal = document.getElementById('closeEditModal');
+            const editQualifier = document.getElementById('editQualifier');
+            const editMechanismType = document.getElementById('editMechanismType');
+            const editMechanismValue = document.getElementById('editMechanismValue');
+            const editMechanismValueContainer = document.getElementById('editMechanismValueContainer');
+            const editingIndex = document.getElementById('editingIndex');
+            const saveEditBtn = document.getElementById('saveEditBtn');
+            const cidrExplanation = document.getElementById('cidrExplanation');
+
+            closeEditModal.addEventListener('click', closeEditModalFunc);
+            editMechanismType.addEventListener('change', updateEditMechanismValueField);
+            saveEditBtn.addEventListener('click', saveEditChanges);
+
+            // Current mechanisms array
+            let mechanisms = [];
+
+            // Event listeners
+            analyzeBtn.addEventListener('click', analyzeSPF);
+            clearBtn.addEventListener('click', clearAll);
+            mechanismTypeSelect.addEventListener('change', updateMechanismValueField);
+            addMechanismBtn.addEventListener('click', addMechanism);
+
+            // Analyze SPF function
+            function analyzeSPF() {
+                const spfText = spfInput.value.trim();
+                if (!spfText) {
+                    alert('Please enter an SPF record');
+                    return;
+                }
+
+                // Parse SPF record
+                const parts = spfText.split(' ');
+                mechanisms = [];
+
+                // Check if first part is SPF version
+                if (!parts[0].startsWith('v=spf')) {
+                    alert('Invalid SPF record. Should start with "v=spf1"');
+                    return;
+                }
+
+                // Extract mechanisms
+                for (let i = 1; i < parts.length; i++) {
+                    const part = parts[i];
+                    let qualifier = '';
+                    let mechanismType = '';
+                    let value = '';
+
+                    // Extract qualifier if present
+                    if (['+', '-', '~', '?'].includes(part.charAt(0))) {
+                        qualifier = part.charAt(0);
+                        mechanismType = part.substring(1);
+                    } else {
+                        mechanismType = part;
+                    }
+
+                    // Split mechanism type and value if applicable
+                    if (mechanismType.includes(':')) {
+                        const typeParts = mechanismType.split(':');
+                        mechanismType = typeParts[0];
+                        value = typeParts[1];
+                    }
+
+                    mechanisms.push({
+                        qualifier,
+                        type: mechanismType,
+                        value
+                    });
+                }
+
+                // Display analysis
+                displayAnalysis();
+
+                // Show editor and results sections
+                analysisSection.classList.remove('hidden');
+                editorSection.classList.remove('hidden');
+                resultSection.classList.remove('hidden');
+
+                // Update mechanism list and final record
+                updateMechanismsList();
+                updateFinalRecord();
+            }
+
+            // Display SPF analysis
+            function displayAnalysis() {
+                analysisResults.innerHTML = '';
+
+                // Overall assessment
+                let overall = document.createElement('div');
+                overall.className = 'p-4 bg-slate-50 rounded-md';
+                overall.innerHTML = '<h3 class="font-medium text-gray-800">Overall Assessment</h3>';
+
+                // Check for all mechanism position
+                const allIndex = mechanisms.findIndex(m => m.type === 'all');
+                let hasProperAll = false;
+
+                if (allIndex === -1) {
+                    overall.innerHTML += '<p class="text-orange-600 mt-1">⚠️ Missing "all" mechanism. Add an "all" mechanism to complete your SPF record.</p>';
+                } else if (allIndex !== mechanisms.length - 1) {
+                    overall.innerHTML += '<p class="text-red-600 mt-1">⚠️ The "all" mechanism should be the last one. Mechanisms after "all" will be ignored.</p>';
+                } else {
+                    const allMech = mechanisms[allIndex];
+                    if (allMech.qualifier === '-') {
+                        overall.innerHTML += '<p class="text-green-600 mt-1">✅ Good! Your record uses "-all" (strict mode) which is recommended for security.</p>';
+                        hasProperAll = true;
+                    } else if (allMech.qualifier === '~') {
+                        overall.innerHTML += '<p class="text-yellow-600 mt-1">⚠️ Your record uses "~all" (soft fail). Consider using "-all" for better security.</p>';
+                        hasProperAll = true;
+                    } else {
+                        overall.innerHTML += '<p class="text-red-600 mt-1">⚠️ Your "all" mechanism is too permissive. "-all" is recommended for security.</p>';
+                    }
+                }
+
+                // Add mechanism count
+                overall.innerHTML += `<p class="text-gray-700 mt-1">Found ${mechanisms.length} mechanisms.</p>`;
+
+                analysisResults.appendChild(overall);
+
+                // Mechanism details
+                let details = document.createElement('div');
+                details.className = 'p-4 bg-gray-50 rounded-md';
+                details.innerHTML = '<h3 class="font-medium text-gray-800">Mechanism Details</h3><ul class="mt-2 space-y-1">';
+
+                mechanisms.forEach(mech => {
+                    let explanation = '';
+                    let qualifierText = '';
+
+                    // Qualifier explanation
+                    switch (mech.qualifier) {
+                        case '+': qualifierText = 'Pass'; break;
+                        case '-': qualifierText = 'Fail'; break;
+                        case '~': qualifierText = 'SoftFail'; break;
+                        case '?': qualifierText = 'Neutral'; break;
+                        default: qualifierText = 'Pass (default)';
+                    }
+
+                    // Mechanism explanation
+                    switch (mech.type) {
+                        case 'a':
+                            explanation = 'Authorizes the domain\'s A record IPs';
+                            if (mech.value) explanation += ` for ${mech.value}`;
+                            break;
+                        case 'mx':
+                            explanation = 'Authorizes the domain\'s MX record IPs';
+                            if (mech.value) explanation += ` for ${mech.value}`;
+                            break;
+                        case 'ip4':
+                            explanation = `Authorizes the IPv4 address ${mech.value}`;
+                            break;
+                        case 'ip6':
+                            explanation = `Authorizes the IPv6 address ${mech.value}`;
+                            break;
+                        case 'include':
+                            explanation = `Includes the SPF record of ${mech.value}`;
+                            break;
+                        case 'exists':
+                            explanation = `Passes if domain ${mech.value} exists`;
+                            break;
+                        case 'all':
+                            explanation = `Default policy for all other senders (${qualifierText})`;
+                            break;
+                        default:
+                            explanation = `Unknown mechanism type: ${mech.type}`;
+                    }
+
+                    // Format the mechanism for display
+                    let mechText = mech.qualifier + mech.type;
+                    if (mech.value) mechText += ':' + mech.value;
+
+                    details.innerHTML += `<li class="text-sm"><span class="font-mono bg-gray-200 px-1 rounded">${mechText}</span> - ${explanation}</li>`;
+                });
+
+                details.innerHTML += '</ul>';
+                analysisResults.appendChild(details);
+
+                // Recommendations
+                let recommendations = document.createElement('div');
+                recommendations.className = 'p-4 bg-green-50 rounded-md';
+                recommendations.innerHTML = '<h3 class="font-medium text-green-800">Recommendations</h3><ul class="mt-2 space-y-1">';
+
+                if (!hasProperAll) {
+                    recommendations.innerHTML += '<li class="text-sm">Add "-all" as the last mechanism for better security.</li>';
+                }
+
+                if (!mechanisms.some(m => m.type === 'a' || m.type === 'mx')) {
+                    recommendations.innerHTML += '<li class="text-sm">Consider adding "a" and/or "mx" mechanisms if you send email from your domain\'s servers.</li>';
+                }
+
+                if (mechanisms.length > 10) {
+                    recommendations.innerHTML += '<li class="text-sm">Your SPF record has many mechanisms. Consider consolidating to avoid DNS lookup limits.</li>';
+                }
+
+                recommendations.innerHTML += '</ul>';
+                analysisResults.appendChild(recommendations);
+            }
+
+            // Update mechanisms list in the editor
+            function updateMechanismsList() {
+                mechanismsList.innerHTML = '';
+
+                mechanisms.forEach((mech, index) => {
+                    const mechItem = document.createElement('div');
+                    mechItem.className = 'flex items-center justify-between bg-white p-2 rounded-md border border-gray-300';
+
+                    // Format the mechanism
+                    let mechText = '';
+                    if (mech.qualifier) mechText += mech.qualifier;
+                    mechText += mech.type;
+                    if (mech.value) mechText += ':' + mech.value;
+
+                    // Create mechanism text
+                    const mechTextSpan = document.createElement('span');
+                    mechTextSpan.className = 'font-mono';
+                    mechTextSpan.textContent = mechText;
+                    mechItem.appendChild(mechTextSpan);
+
+                    // Create buttons container
+                    const buttonsDiv = document.createElement('div');
+                    buttonsDiv.className = 'flex space-x-2';
+
+                    // Create button with icon helper function
+                    function createIconButton(action, iconName, color, title) {
+                        const button = document.createElement('button');
+                        button.className = `text-${color}-500 hover:text-${color}-700 p-1`;
+                        button.setAttribute('data-index', index);
+                        button.setAttribute('data-action', action);
+                        button.setAttribute('title', title);
+
+                        // Create SVG element directly
+                        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        svg.setAttribute('width', '16');
+                        svg.setAttribute('height', '16');
+                        svg.setAttribute('viewBox', '0 0 24 24');
+                        svg.setAttribute('fill', 'none');
+                        svg.setAttribute('stroke', 'currentColor');
+                        svg.setAttribute('stroke-width', '2');
+                        svg.setAttribute('stroke-linecap', 'round');
+                        svg.setAttribute('stroke-linejoin', 'round');
+
+                        // Set the appropriate path based on the icon name
+                        let path = '';
+                        switch (iconName) {
+                            case 'chevron-up':
+                                path = '<polyline points="18 15 12 9 6 15"></polyline>';
+                                break;
+                            case 'chevron-down':
+                                path = '<polyline points="6 9 12 15 18 9"></polyline>';
+                                break;
+                            case 'edit':
+                                path = '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>';
+                                break;
+                            case 'trash':
+                                path = '<polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>';
+                                break;
+                        }
+
+                        svg.innerHTML = path;
+                        button.appendChild(svg);
+                        return button;
+                    }
+
+                    // Add all buttons
+                    const upButton = createIconButton('up', 'chevron-up', 'gray', 'Move up');
+                    const downButton = createIconButton('down', 'chevron-down', 'gray', 'Move down');
+                    const editButton = createIconButton('edit', 'edit', 'blue', 'Edit mechanism');
+                    const deleteButton = createIconButton('delete', 'trash', 'red', 'Delete');
+
+                    buttonsDiv.appendChild(upButton);
+                    buttonsDiv.appendChild(downButton);
+                    buttonsDiv.appendChild(editButton);
+                    buttonsDiv.appendChild(deleteButton);
+
+                    mechItem.appendChild(buttonsDiv);
+                    mechanismsList.appendChild(mechItem);
+
+                    // Add event listeners to buttons
+                    const buttons = mechItem.querySelectorAll('button');
+                    buttons.forEach(button => {
+                        button.addEventListener('click', function () {
+                            const index = parseInt(this.getAttribute('data-index'));
+                            const action = this.getAttribute('data-action');
+
+                            if (action === 'delete') {
+                                mechanisms.splice(index, 1);
+                                updateMechanismsList();
+                                updateFinalRecord();
+                            } else if (action === 'up' && index > 0) {
+                                [mechanisms[index - 1], mechanisms[index]] = [mechanisms[index], mechanisms[index - 1]];
+                                updateMechanismsList();
+                                updateFinalRecord();
+                            } else if (action === 'down' && index < mechanisms.length - 1) {
+                                [mechanisms[index], mechanisms[index + 1]] = [mechanisms[index + 1], mechanisms[index]];
+                                updateMechanismsList();
+                                updateFinalRecord();
+                            } else if (action === 'edit') {
+                                openEditModal(index);
+                            }
+                        });
+                    });
+                });
+            }
+
+            // Update mechanism value field based on selected mechanism type
+            function updateMechanismValueField() {
+                const mechType = mechanismTypeSelect.value;
+
+                if (['a', 'mx', 'all'].includes(mechType)) {
+                    mechanismValueContainer.classList.add('hidden');
+                    mechanismValue.value = '';
+                } else {
+                    mechanismValueContainer.classList.remove('hidden');
+
+                    // Update placeholder text
+                    switch (mechType) {
+                        case 'include':
+                            mechanismValue.placeholder = 'Domain name (e.g., _spf.google.com)';
+                            break;
+                        case 'ip4':
+                            mechanismValue.placeholder = 'IPv4 address or range (e.g., 192.168.1.1 or 192.168.0.0/24)';
+                            break;
+                        case 'ip6':
+                            mechanismValue.placeholder = 'IPv6 address or range (e.g., 2001:db8::1 or 2001:db8::/64)';
+                            break;
+                        case 'exists':
+                            mechanismValue.placeholder = 'Domain name to check';
+                            break;
+                        default:
+                            mechanismValue.placeholder = 'Value';
+                    }
+                }
+            }
+
+            // Add new mechanism
+            function addMechanism() {
+                const mechType = mechanismTypeSelect.value;
+                const qualifier = qualifierSelect.value;
+                let value = '';
+
+                if (!['a', 'mx', 'all'].includes(mechType)) {
+                    value = mechanismValue.value.trim();
+                    if (!value) {
+                        alert('Please enter a value for this mechanism');
+                        return;
+                    }
+                }
+
+                // Special handling for 'all' - should be last
+                if (mechType === 'all') {
+                    // Remove any existing 'all' mechanism
+                    const allIndex = mechanisms.findIndex(m => m.type === 'all');
+                    if (allIndex !== -1) {
+                        mechanisms.splice(allIndex, 1);
+                    }
+
+                    // Add new 'all' at the end
+                    mechanisms.push({
+                        qualifier,
+                        type: mechType,
+                        value
+                    });
+                } else {
+                    // For other mechanisms, add before 'all' if present
+                    const allIndex = mechanisms.findIndex(m => m.type === 'all');
+
+                    if (allIndex !== -1) {
+                        mechanisms.splice(allIndex, 0, {
+                            qualifier,
+                            type: mechType,
+                            value
+                        });
+                    } else {
+                        mechanisms.push({
+                            qualifier,
+                            type: mechType,
+                            value
+                        });
+                    }
+                }
+
+                // Reset form
+                qualifierSelect.value = '';
+                mechanismTypeSelect.value = 'a';
+                mechanismValue.value = '';
+                updateMechanismValueField();
+
+                // Update UI
+                updateMechanismsList();
+                updateFinalRecord();
+            }
+
+            // Open edit modal
+            function openEditModal(index) {
+                const mechanism = mechanisms[index];
+
+                editQualifier.value = mechanism.qualifier;
+                editMechanismType.value = mechanism.type;
+                editMechanismValue.value = mechanism.value;
+                editingIndex.value = index;
+
+                updateEditMechanismValueField();
+
+                editModal.classList.remove('hidden');
+            }
+
+            // Close edit modal
+            function closeEditModalFunc() {
+                editModal.classList.add('hidden');
+            }
+
+            // Update edit mechanism value field
+            function updateEditMechanismValueField() {
+                const mechType = editMechanismType.value;
+
+                if (['a', 'mx', 'all'].includes(mechType)) {
+                    editMechanismValueContainer.classList.add('hidden');
+                    editMechanismValue.value = '';
+                } else {
+                    editMechanismValueContainer.classList.remove('hidden');
+
+                    // Show CIDR explanation for IP mechanisms
+                    if (mechType === 'ip4' || mechType === 'ip6') {
+                        cidrExplanation.classList.remove('hidden');
+                    } else {
+                        cidrExplanation.classList.add('hidden');
+                    }
+
+                    // Update placeholder text
+                    switch (mechType) {
+                        case 'include':
+                            editMechanismValue.placeholder = 'Domain name (e.g., _spf.google.com)';
+                            break;
+                        case 'ip4':
+                            editMechanismValue.placeholder = 'IPv4 address or range (e.g., 192.168.1.1 or 192.168.0.0/24)';
+                            break;
+                        case 'ip6':
+                            editMechanismValue.placeholder = 'IPv6 address or range (e.g., 2001:db8::1 or 2001:db8::/64)';
+                            break;
+                        case 'exists':
+                            editMechanismValue.placeholder = 'Domain name to check';
+                            break;
+                        default:
+                            editMechanismValue.placeholder = 'Value';
+                    }
+                }
+            }
+
+            // Save edit changes
+            function saveEditChanges() {
+                const index = parseInt(editingIndex.value);
+                const mechType = editMechanismType.value;
+                const qualifier = editQualifier.value;
+                let value = '';
+
+                if (!['a', 'mx', 'all'].includes(mechType)) {
+                    value = editMechanismValue.value.trim();
+                    if (!value) {
+                        alert('Please enter a value for this mechanism');
+                        return;
+                    }
+                }
+
+                // Update mechanism
+                mechanisms[index] = {
+                    qualifier,
+                    type: mechType,
+                    value
+                };
+
+                // Special handling for 'all' - move to end
+                if (mechType === 'all' && index !== mechanisms.length - 1) {
+                    const allMech = mechanisms.splice(index, 1)[0];
+                    mechanisms.push(allMech);
+                }
+
+                // Close modal
+                closeEditModalFunc();
+
+                // Update UI
+                updateMechanismsList();
+                updateFinalRecord();
+            }
+
+            // Update final SPF record
+            function updateFinalRecord() {
+                let record = 'v=spf1';
+
+                mechanisms.forEach(mech => {
+                    record += ' ';
+                    if (mech.qualifier) record += mech.qualifier;
+                    record += mech.type;
+                    if (mech.value) record += ':' + mech.value;
+                });
+
+                finalRecord.textContent = record;
+                dnsValue.textContent = record;
+            }
+
+            // Clear all fields and reset
+            function clearAll() {
+                spfInput.value = '';
+                mechanisms = [];
+                analysisSection.classList.add('hidden');
+                editorSection.classList.add('hidden');
+                resultSection.classList.add('hidden');
+            }
+
+            // Initialize the mechanism value field
+            updateMechanismValueField();
+
+            // If SPF is in URL, pre-fill it
+            const urlParams = new URLSearchParams(window.location.search);
+            const spfParam = urlParams.get('spf');
+            if (spfParam) {
+                spfInput.value = decodeURIComponent(spfParam);
+                analyzeSPF();
+            }
+        });
+    </script>
+</body>
+
+</html>

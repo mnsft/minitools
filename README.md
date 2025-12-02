@@ -70,6 +70,14 @@ GitHub Commit Comparison Tool for easily generating comparison URLs.
 - Copy generated URLs to clipboard
 - Open comparisons directly in GitHub
 
+### spfManager
+SPF Record Analyzer & Editor for managing email authentication.
+- Parse and validate existing SPF records
+- Visual analysis with security recommendations
+- Add, edit, remove, and reorder SPF mechanisms
+- Support for all SPF qualifiers and mechanism types
+- Copy final record for DNS implementation
+
 ## Technologies Used
 - HTML, CSS, JavaScript
 - Tailwind CSS
@@ -90,6 +98,7 @@ Some tools can be run directly in the browser without server-side requirements. 
 - Bulkd
 - Bulkr
 - GitComp
+- spfManager
 
 ## PHP-Based Tools
 - Minify
