@@ -1,4 +1,4 @@
-<!-- v2.2 with Exact Match Filter -->
+<!-- v2.3 with Exact Match Filter + Auto Totals Row -->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -115,6 +115,9 @@
                     <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
                         <!-- Table data will be added here by JavaScript -->
                     </tbody>
+                    <tfoot id="tableFoot" class="bg-gray-100 font-semibold">
+                        <!-- Totals row will be added here by JavaScript -->
+                    </tfoot>
                 </table>
             </div>
         </div>
@@ -320,10 +323,11 @@
 
                 // Apply filters after rendering
                 applyFilters();
-                
+
                 // Small delay to ensure DOM is ready before counting
                 setTimeout(function() {
                     updateCounts();
+                    updateTotals();
                 }, 10);
             }
 
@@ -462,6 +466,7 @@
                     row.toggle(show);
                 });
                 updateCounts();
+                updateTotals();
             }
 
             function evaluateFilters(row) {
@@ -510,6 +515,104 @@
                 const visible = $('#dataTable tbody tr:visible').length;
                 $('#totalCount').text(total);
                 $('#filteredCount').text(visible);
+            }
+
+            // Parse numeric value from text (handles currency, European/US formats)
+            function parseNumericValue(text) {
+                if (!text || typeof text !== 'string') return null;
+
+                // Remove common currency symbols and whitespace
+                let cleaned = text.replace(/[€$£¥₹₽\s]/g, '').trim();
+
+                // Remove thousand separators and handle decimal separators
+                // Detect format: if comma is followed by exactly 2 digits at end, it's European decimal
+                const europeanDecimal = /,\d{2}$/.test(cleaned);
+
+                if (europeanDecimal) {
+                    // European format: 1.234,56 -> 1234.56
+                    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+                } else {
+                    // US format or no decimals: 1,234.56 -> 1234.56
+                    cleaned = cleaned.replace(/,/g, '');
+                }
+
+                const num = parseFloat(cleaned);
+                return isNaN(num) ? null : num;
+            }
+
+            // Format number for display (matches input format style)
+            function formatNumber(num, useEuropeanFormat) {
+                if (useEuropeanFormat) {
+                    return num.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+                return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            // Detect if column uses European format
+            function detectEuropeanFormat(values) {
+                return values.some(v => /,\d{2}$/.test(v.replace(/[€$£¥₹₽\s]/g, '').trim()));
+            }
+
+            function updateTotals() {
+                const tableFoot = $('#tableFoot');
+                tableFoot.html('');
+
+                if (filteredData.length <= 1) return;
+
+                const headers = filteredData[0];
+                const visibleRows = $('#dataTable tbody tr:visible');
+
+                if (visibleRows.length === 0) return;
+
+                const totalsRow = $('<tr>');
+                const columnTotals = [];
+                const columnHasNumbers = [];
+                const columnFormats = [];
+
+                // Initialize arrays
+                headers.forEach(() => {
+                    columnTotals.push(0);
+                    columnHasNumbers.push(false);
+                    columnFormats.push([]);
+                });
+
+                // Calculate totals from visible rows
+                visibleRows.each(function() {
+                    $(this).find('td').each(function(colIndex) {
+                        const text = $(this).text().trim();
+                        const num = parseNumericValue(text);
+                        if (num !== null) {
+                            columnTotals[colIndex] += num;
+                            columnHasNumbers[colIndex] = true;
+                            columnFormats[colIndex].push(text);
+                        }
+                    });
+                });
+
+                // Build totals row
+                headers.forEach((header, index) => {
+                    const td = $('<td>')
+                        .addClass('px-6 py-3 whitespace-nowrap text-sm text-gray-900 border-t-2 border-gray-300');
+
+                    if (columnHasNumbers[index]) {
+                        const useEuropean = detectEuropeanFormat(columnFormats[index]);
+                        const formattedTotal = formatNumber(columnTotals[index], useEuropean);
+
+                        // Check if original values had currency symbols
+                        const hasCurrency = columnFormats[index].some(v => /[€$£¥₹₽]/.test(v));
+                        const currencySymbol = hasCurrency ? (columnFormats[index].find(v => /[€$£¥₹₽]/.test(v))?.match(/[€$£¥₹₽]/)?.[0] || '') : '';
+
+                        td.html(`<strong>${formattedTotal}${currencySymbol ? ' ' + currencySymbol : ''}</strong>`);
+                    } else if (index === 0) {
+                        td.html('<strong>Totals</strong>');
+                    } else {
+                        td.text('—');
+                    }
+
+                    totalsRow.append(td);
+                });
+
+                tableFoot.append(totalsRow);
             }
         });
     </script>
