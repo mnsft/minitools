@@ -1,4 +1,4 @@
-<!-- v2.2 -->
+<!-- v2.3 -->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -65,6 +65,25 @@
                 </div>
             </div>
 
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Extraction Mode</label>
+                <div class="flex flex-wrap gap-4">
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="radio" name="extractionMode" value="text" checked class="w-4 h-4 text-primary" onchange="toggleAttributeExtract()">
+                        <span class="ml-2 text-gray-700">Extract Text Content</span>
+                    </label>
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="radio" name="extractionMode" value="attribute" class="w-4 h-4 text-primary" onchange="toggleAttributeExtract()">
+                        <span class="ml-2 text-gray-700">Extract Attribute Value</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="extractAttributeContainer" class="mb-4 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Attribute to Extract</label>
+                <input type="text" id="extractAttribute" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="e.g. href, src, data-id">
+            </div>
+
             <button onclick="extractContent()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition duration-200">
                 Extract Content
             </button>
@@ -85,11 +104,21 @@
     </footer>
 
     <script>
+        let extractedValues = [];
+
+        function toggleAttributeExtract() {
+            const mode = document.querySelector('input[name="extractionMode"]:checked').value;
+            const container = document.getElementById('extractAttributeContainer');
+            container.classList.toggle('hidden', mode !== 'attribute');
+        }
+
         function extractContent() {
             const htmlInput = document.getElementById('htmlInput').value;
             const attributeName = document.getElementById('attributeName').value;
             const attributeValue = document.getElementById('attributeValue').value;
+            const extractionMode = document.querySelector('input[name="extractionMode"]:checked').value;
             const resultsDiv = document.getElementById('results');
+            extractedValues = [];
 
             try {
                 // Create a temporary container
@@ -104,27 +133,73 @@
                     return;
                 }
 
-                // Extract and display results
                 let output = '<div class="space-y-4">';
-                elements.forEach((element, index) => {
-                    output += `
-                        <div class="border-b border-gray-200 pb-4">
-                            <p class="font-semibold mb-2 text-gray-800">Match ${index + 1}</p>
-                            <p class="mb-2"><span class="font-medium text-gray-700">Inner Text</span> ${element.textContent}</p>
-                            <p class="mb-2"><span class="font-medium text-gray-700">Inner HTML</span></p>
-                            <pre class="bg-gray-100 p-3 rounded-lg overflow-x-auto text-sm">${escapeHtml(element.innerHTML)}</pre>
-                            <p class="mb-2"><span class="font-medium text-gray-700">Outer HTML</span></p>
-                            <pre class="bg-gray-100 p-3 rounded-lg overflow-x-auto text-sm">${escapeHtml(element.outerHTML)}</pre>
-                        </div>
-                    `;
-                });
-                output += '</div>';
 
-                // Add "Copy All Texts" button
-                output += '<button onclick="copyAllText()" class="mt-4 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg transition duration-200">Copy All Texts</button>';
+                if (extractionMode === 'attribute') {
+                    // Extract attribute values
+                    const extractAttribute = document.getElementById('extractAttribute').value;
+                    if (!extractAttribute) {
+                        resultsDiv.innerHTML = '<p class="text-red-500">Please enter an attribute name to extract.</p>';
+                        return;
+                    }
+
+                    elements.forEach((element, index) => {
+                        const attrValue = element.getAttribute(extractAttribute);
+                        if (attrValue !== null) {
+                            extractedValues.push(attrValue);
+                            output += `
+                                <div class="border-b border-gray-200 pb-2">
+                                    <p class="text-gray-800"><span class="font-medium text-gray-500">${index + 1}.</span> <span class="extracted-value">${escapeHtml(attrValue)}</span></p>
+                                </div>
+                            `;
+                        } else {
+                            output += `
+                                <div class="border-b border-gray-200 pb-2">
+                                    <p class="text-gray-400"><span class="font-medium">${index + 1}.</span> <em>(attribute not found)</em></p>
+                                </div>
+                            `;
+                        }
+                    });
+
+                    output += '</div>';
+                    output += `<p class="mt-4 text-sm text-gray-600">Found ${extractedValues.length} values from ${elements.length} elements</p>`;
+                    output += '<button onclick="copyExtractedValues()" class="mt-4 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg transition duration-200">Copy All Values</button>';
+                } else {
+                    // Extract text content (original behavior)
+                    elements.forEach((element, index) => {
+                        extractedValues.push(element.textContent);
+                        output += `
+                            <div class="border-b border-gray-200 pb-4">
+                                <p class="font-semibold mb-2 text-gray-800">Match ${index + 1}</p>
+                                <p class="mb-2"><span class="font-medium text-gray-700">Inner Text</span> ${element.textContent}</p>
+                                <p class="mb-2"><span class="font-medium text-gray-700">Inner HTML</span></p>
+                                <pre class="bg-gray-100 p-3 rounded-lg overflow-x-auto text-sm">${escapeHtml(element.innerHTML)}</pre>
+                                <p class="mb-2"><span class="font-medium text-gray-700">Outer HTML</span></p>
+                                <pre class="bg-gray-100 p-3 rounded-lg overflow-x-auto text-sm">${escapeHtml(element.outerHTML)}</pre>
+                            </div>
+                        `;
+                    });
+                    output += '</div>';
+                    output += '<button onclick="copyAllText()" class="mt-4 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg transition duration-200">Copy All Texts</button>';
+                }
+
                 resultsDiv.innerHTML = output;
             } catch (error) {
                 resultsDiv.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function copyExtractedValues() {
+            if (extractedValues.length === 0) {
+                alert('No values to copy');
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(extractedValues.join('\n'));
+                showNotification('All values copied!');
+            } catch (err) {
+                alert('Failed to copy values');
             }
         }
 
@@ -143,26 +218,27 @@
             if (allText) {
                 try {
                     await navigator.clipboard.writeText(allText);
-
-                    // Create a temporary notification
-                    const notification = document.createElement('div');
-                    notification.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg transition-opacity duration-500';
-                    notification.textContent = 'All texts copied!';
-                    document.body.appendChild(notification);
-
-                    // Remove the notification after 3 seconds
-                    setTimeout(() => {
-                        notification.classList.add('opacity-0');
-                        setTimeout(() => {
-                            document.body.removeChild(notification);
-                        }, 500);
-                    }, 3000);
+                    showNotification('All texts copied!');
                 } catch (err) {
                     alert('Failed to copy all texts');
                 }
             } else {
                 alert('No texts to copy');
             }
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg transition-opacity duration-500';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.classList.add('opacity-0');
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 500);
+            }, 3000);
         }
 
         function escapeHtml(unsafe) {
