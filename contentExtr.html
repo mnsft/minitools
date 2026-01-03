@@ -114,8 +114,8 @@
 
         function extractContent() {
             const htmlInput = document.getElementById('htmlInput').value;
-            const attributeName = document.getElementById('attributeName').value;
-            const attributeValue = document.getElementById('attributeValue').value;
+            const attributeName = document.getElementById('attributeName').value.trim();
+            const attributeValue = document.getElementById('attributeValue').value.trim();
             const extractionMode = document.querySelector('input[name="extractionMode"]:checked').value;
             const resultsDiv = document.getElementById('results');
             extractedValues = [];
@@ -125,24 +125,32 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(htmlInput, 'text/html');
 
-                // Find all elements with matching attribute
-                const elements = doc.querySelectorAll(`[${attributeName}="${attributeValue}"]`);
-
-                if (elements.length === 0) {
-                    resultsDiv.innerHTML = '<p class="text-red-500">No matching elements found.</p>';
-                    return;
-                }
-
-                let output = '<div class="space-y-4">';
+                let elements;
 
                 if (extractionMode === 'attribute') {
                     // Extract attribute values
-                    const extractAttribute = document.getElementById('extractAttribute').value;
+                    const extractAttribute = document.getElementById('extractAttribute').value.trim();
                     if (!extractAttribute) {
                         resultsDiv.innerHTML = '<p class="text-red-500">Please enter an attribute name to extract.</p>';
                         return;
                     }
 
+                    // Build selector based on provided filters
+                    if (attributeName && attributeValue) {
+                        elements = doc.querySelectorAll(`[${attributeName}="${attributeValue}"]`);
+                    } else if (attributeName) {
+                        elements = doc.querySelectorAll(`[${attributeName}]`);
+                    } else {
+                        // No filter - select all elements with the attribute to extract
+                        elements = doc.querySelectorAll(`[${extractAttribute}]`);
+                    }
+
+                    if (elements.length === 0) {
+                        resultsDiv.innerHTML = '<p class="text-red-500">No matching elements found.</p>';
+                        return;
+                    }
+
+                    let output = '<div class="space-y-4">';
                     elements.forEach((element, index) => {
                         const attrValue = element.getAttribute(extractAttribute);
                         if (attrValue !== null) {
@@ -164,8 +172,22 @@
                     output += '</div>';
                     output += `<p class="mt-4 text-sm text-gray-600">Found ${extractedValues.length} values from ${elements.length} elements</p>`;
                     output += '<button onclick="copyExtractedValues()" class="mt-4 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg transition duration-200">Copy All Values</button>';
+                    resultsDiv.innerHTML = output;
                 } else {
-                    // Extract text content (original behavior)
+                    // Extract text content (original behavior) - requires attribute name/value
+                    if (!attributeName || !attributeValue) {
+                        resultsDiv.innerHTML = '<p class="text-red-500">Please enter both attribute name and value for text extraction.</p>';
+                        return;
+                    }
+
+                    elements = doc.querySelectorAll(`[${attributeName}="${attributeValue}"]`);
+
+                    if (elements.length === 0) {
+                        resultsDiv.innerHTML = '<p class="text-red-500">No matching elements found.</p>';
+                        return;
+                    }
+
+                    let output = '<div class="space-y-4">';
                     elements.forEach((element, index) => {
                         extractedValues.push(element.textContent);
                         output += `
@@ -181,9 +203,8 @@
                     });
                     output += '</div>';
                     output += '<button onclick="copyAllText()" class="mt-4 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg transition duration-200">Copy All Texts</button>';
+                    resultsDiv.innerHTML = output;
                 }
-
-                resultsDiv.innerHTML = output;
             } catch (error) {
                 resultsDiv.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
             }
