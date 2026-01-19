@@ -57,8 +57,7 @@
                                 placeholder="Paste your text here..." oninput="validatePositions()"></textarea>
                     </div>
                     
-                    <div class="flex items-center gap-4">
-                        <div id="preview" class="overflow-x-auto font-mono whitespace-pre text-left text-gray-600 leading-relaxed flex-1"></div>
+                    <div class="flex flex-col gap-4">
                         <div class="flex items-center gap-2 text-sm text-gray-600">
                             <label for="previewRows">Preview rows:</label>
                             <select id="previewRows" class="p-1 border border-gray-300 rounded text-sm" onchange="updatePreview()">
@@ -68,6 +67,7 @@
                                 <option value="0">All</option>
                             </select>
                         </div>
+                        <div id="preview" class="max-w-full overflow-x-auto font-mono whitespace-pre text-left text-gray-600 leading-relaxed flex-1"></div>
                     </div>
 
                     <!-- Extraction Type Toggle -->
