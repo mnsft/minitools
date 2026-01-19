@@ -1,4 +1,4 @@
-<!-- v2.2 -->
+<!-- v2.3 -->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -39,8 +39,9 @@
             <div class="bg-slate-50 border-l-4 border-primary p-4 rounded-r">
                 <ol class="list-decimal pl-5 space-y-1">
                     <li>Paste your text in the input area below.</li>
-                    <li>Set the start and end positions for the range you want to extract or remove.</li>
-                    <li>Choose the desired mode (Extract or Remove) and direction (Start from left or right).</li>
+                    <li>Choose extraction type: <strong>By position</strong> (character range) or <strong>By delimiter</strong> (before/after a character).</li>
+                    <li><strong>By position:</strong> Set start/end positions and choose Extract or Remove mode.</li>
+                    <li><strong>By delimiter:</strong> Enter the delimiter and choose to extract before or after it (first or last occurrence).</li>
                     <li>Click "Process" to apply the operation and view the result.</li>
                     <li>Click on the result to copy it to your clipboard.</li>
                 </ol>
@@ -58,40 +59,92 @@
                     
                     <div id="preview" class="font-mono whitespace-pre text-left text-gray-600 leading-relaxed"></div>
 
-                    <div class="flex flex-wrap gap-6 py-2">
+                    <!-- Extraction Type Toggle -->
+                    <div class="flex flex-wrap gap-6 py-2 border-b border-gray-200 pb-4">
                         <div class="flex gap-4">
                             <label class="inline-flex items-center">
-                                <input type="radio" name="mode" value="extract" checked class="h-4 w-4 text-primary border-gray-300">
-                                <span class="ml-2 text-sm text-gray-700">Extract range</span>
+                                <input type="radio" name="extractType" value="position" checked class="h-4 w-4 text-primary border-gray-300" onchange="toggleExtractionType()">
+                                <span class="ml-2 text-sm text-gray-700">By position</span>
                             </label>
                             <label class="inline-flex items-center">
-                                <input type="radio" name="mode" value="remove" class="h-4 w-4 text-primary border-gray-300">
-                                <span class="ml-2 text-sm text-gray-700">Remove range</span>
-                            </label>
-                        </div>
-
-                        <div class="flex gap-4">
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="direction" value="left" checked class="h-4 w-4 text-primary border-gray-300">
-                                <span class="ml-2 text-sm text-gray-700">Start from left</span>
-                            </label>
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="direction" value="right" class="h-4 w-4 text-primary border-gray-300">
-                                <span class="ml-2 text-sm text-gray-700">Start from right</span>
+                                <input type="radio" name="extractType" value="delimiter" class="h-4 w-4 text-primary border-gray-300" onchange="toggleExtractionType()">
+                                <span class="ml-2 text-sm text-gray-700">By delimiter</span>
                             </label>
                         </div>
                     </div>
 
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <div class="flex-1">
-                            <label for="startPos" class="block text-sm font-medium text-gray-700 mb-2">Start position</label>
-                            <input type="number" class="w-full p-3 border border-gray-300 rounded-lg" 
-                                min="0" value="0" id="startPos" oninput="validatePositions()" />
+                    <!-- Position-based options -->
+                    <div id="positionOptions">
+                        <div class="flex flex-wrap gap-6 py-2">
+                            <div class="flex gap-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="mode" value="extract" checked class="h-4 w-4 text-primary border-gray-300">
+                                    <span class="ml-2 text-sm text-gray-700">Extract range</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="mode" value="remove" class="h-4 w-4 text-primary border-gray-300">
+                                    <span class="ml-2 text-sm text-gray-700">Remove range</span>
+                                </label>
+                            </div>
+
+                            <div class="flex gap-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="direction" value="left" checked class="h-4 w-4 text-primary border-gray-300">
+                                    <span class="ml-2 text-sm text-gray-700">Start from left</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="direction" value="right" class="h-4 w-4 text-primary border-gray-300">
+                                    <span class="ml-2 text-sm text-gray-700">Start from right</span>
+                                </label>
+                            </div>
                         </div>
-                        <div class="flex-1">
-                            <label for="endPos" class="block text-sm font-medium text-gray-700 mb-2">End position</label>
-                            <input type="number" class="w-full p-3 border border-gray-300 rounded-lg" 
-                                min="0" value="0" id="endPos" oninput="validatePositions()" />
+
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <div class="flex-1">
+                                <label for="startPos" class="block text-sm font-medium text-gray-700 mb-2">Start position</label>
+                                <input type="number" class="w-full p-3 border border-gray-300 rounded-lg"
+                                    min="0" value="0" id="startPos" oninput="validatePositions()" />
+                            </div>
+                            <div class="flex-1">
+                                <label for="endPos" class="block text-sm font-medium text-gray-700 mb-2">End position</label>
+                                <input type="number" class="w-full p-3 border border-gray-300 rounded-lg"
+                                    min="0" value="0" id="endPos" oninput="validatePositions()" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delimiter-based options -->
+                    <div id="delimiterOptions" class="hidden">
+                        <div class="flex flex-wrap gap-6 py-2">
+                            <div class="flex gap-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="delimiterMode" value="before" checked class="h-4 w-4 text-primary border-gray-300" onchange="updatePreview()">
+                                    <span class="ml-2 text-sm text-gray-700">Extract before</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="delimiterMode" value="after" class="h-4 w-4 text-primary border-gray-300" onchange="updatePreview()">
+                                    <span class="ml-2 text-sm text-gray-700">Extract after</span>
+                                </label>
+                            </div>
+
+                            <div class="flex gap-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="occurrence" value="first" checked class="h-4 w-4 text-primary border-gray-300" onchange="updatePreview()">
+                                    <span class="ml-2 text-sm text-gray-700">First occurrence</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="occurrence" value="last" class="h-4 w-4 text-primary border-gray-300" onchange="updatePreview()">
+                                    <span class="ml-2 text-sm text-gray-700">Last occurrence</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <div class="flex-1">
+                                <label for="delimiter" class="block text-sm font-medium text-gray-700 mb-2">Delimiter character(s)</label>
+                                <input type="text" class="w-full p-3 border border-gray-300 rounded-lg"
+                                    placeholder="e.g. @ or , or //" id="delimiter" oninput="updatePreview()" />
+                            </div>
                         </div>
                     </div>
                     
@@ -116,71 +169,158 @@
     </footer>
 
     <script>
+        function toggleExtractionType() {
+            const extractType = document.querySelector('input[name="extractType"]:checked').value;
+            const positionOptions = document.getElementById("positionOptions");
+            const delimiterOptions = document.getElementById("delimiterOptions");
+
+            if (extractType === 'position') {
+                positionOptions.classList.remove('hidden');
+                delimiterOptions.classList.add('hidden');
+            } else {
+                positionOptions.classList.add('hidden');
+                delimiterOptions.classList.remove('hidden');
+            }
+            updatePreview();
+        }
+
         function validatePositions() {
             const startPos = document.getElementById("startPos");
             const endPos = document.getElementById("endPos");
-            
+
             if (parseInt(startPos.value) > parseInt(endPos.value)) {
                 endPos.value = startPos.value;
             }
-            
+
             updatePreview();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function updatePreview() {
             const input = document.getElementById("inTxt").value;
-            const startPos = parseInt(document.getElementById("startPos").value) || 0;
-            const endPos = parseInt(document.getElementById("endPos").value) || 0;
-            const direction = document.querySelector('input[name="direction"]:checked').value;
-            
+            const extractType = document.querySelector('input[name="extractType"]:checked').value;
+
             const lines = input.split('\n').filter(line => line.trim());
-            if (lines.length === 0) return;
+            if (lines.length === 0) {
+                document.getElementById("preview").innerHTML = '';
+                return;
+            }
 
             let preview = '';
-            for (let i = 0; i < Math.min(3, lines.length); i++) {
-                const line = lines[i];
-                if (direction === 'left') {
-                    preview += line.substring(0, startPos) + 
-                              '<span class="bg-primary text-white">' + 
-                              line.substring(startPos, endPos) + 
-                              '</span>' + 
-                              line.substring(endPos) + '\n';
-                } else {
-                    let len = line.length;
-                    preview += line.substring(0, len - endPos) + 
-                              '<span class="bg-primary text-white">' + 
-                              line.substring(len - endPos, len - startPos) + 
-                              '</span>' + 
-                              line.substring(len - startPos) + '\n';
+
+            if (extractType === 'position') {
+                const startPos = parseInt(document.getElementById("startPos").value) || 0;
+                const endPos = parseInt(document.getElementById("endPos").value) || 0;
+                const direction = document.querySelector('input[name="direction"]:checked').value;
+
+                for (let i = 0; i < Math.min(3, lines.length); i++) {
+                    const line = lines[i];
+                    if (direction === 'left') {
+                        preview += escapeHtml(line.substring(0, startPos)) +
+                                  '<span class="bg-primary text-white">' +
+                                  escapeHtml(line.substring(startPos, endPos)) +
+                                  '</span>' +
+                                  escapeHtml(line.substring(endPos)) + '\n';
+                    } else {
+                        let len = line.length;
+                        preview += escapeHtml(line.substring(0, len - endPos)) +
+                                  '<span class="bg-primary text-white">' +
+                                  escapeHtml(line.substring(len - endPos, len - startPos)) +
+                                  '</span>' +
+                                  escapeHtml(line.substring(len - startPos)) + '\n';
+                    }
+                }
+            } else {
+                const delimiter = document.getElementById("delimiter").value;
+                const delimiterMode = document.querySelector('input[name="delimiterMode"]:checked').value;
+                const occurrence = document.querySelector('input[name="occurrence"]:checked').value;
+
+                if (!delimiter) {
+                    document.getElementById("preview").innerHTML = '<span class="text-gray-400">Enter a delimiter to see preview</span>';
+                    return;
+                }
+
+                for (let i = 0; i < Math.min(3, lines.length); i++) {
+                    const line = lines[i];
+                    const idx = occurrence === 'first' ? line.indexOf(delimiter) : line.lastIndexOf(delimiter);
+
+                    if (idx === -1) {
+                        preview += escapeHtml(line) + ' <span class="text-red-500">(no match)</span>\n';
+                    } else {
+                        if (delimiterMode === 'before') {
+                            preview += '<span class="bg-primary text-white">' +
+                                      escapeHtml(line.substring(0, idx)) +
+                                      '</span>' +
+                                      escapeHtml(line.substring(idx)) + '\n';
+                        } else {
+                            const afterIdx = idx + delimiter.length;
+                            preview += escapeHtml(line.substring(0, afterIdx)) +
+                                      '<span class="bg-primary text-white">' +
+                                      escapeHtml(line.substring(afterIdx)) +
+                                      '</span>\n';
+                        }
+                    }
                 }
             }
-            
+
             document.getElementById("preview").innerHTML = preview;
         }
 
         function processText() {
             const input = document.getElementById("inTxt").value;
-            const startPos = parseInt(document.getElementById("startPos").value);
-            const endPos = parseInt(document.getElementById("endPos").value);
-            const direction = document.querySelector('input[name="direction"]:checked').value;
-            const mode = document.querySelector('input[name="mode"]:checked').value;
-            
+            const extractType = document.querySelector('input[name="extractType"]:checked').value;
+
             const lines = input.split('\n').filter(line => line.trim());
             let result = '';
 
-            for (let line of lines) {
-                if (direction === 'left') {
-                    if (mode === 'extract') {
-                        result += line.substring(startPos, endPos) + '\n';
-                    } else { // remove
-                        result += line.substring(0, startPos) + line.substring(endPos) + '\n';
+            if (extractType === 'position') {
+                const startPos = parseInt(document.getElementById("startPos").value);
+                const endPos = parseInt(document.getElementById("endPos").value);
+                const direction = document.querySelector('input[name="direction"]:checked').value;
+                const mode = document.querySelector('input[name="mode"]:checked').value;
+
+                for (let line of lines) {
+                    if (direction === 'left') {
+                        if (mode === 'extract') {
+                            result += line.substring(startPos, endPos) + '\n';
+                        } else {
+                            result += line.substring(0, startPos) + line.substring(endPos) + '\n';
+                        }
+                    } else {
+                        let len = line.length;
+                        if (mode === 'extract') {
+                            result += line.substring(len - endPos, len - startPos) + '\n';
+                        } else {
+                            result += line.substring(0, len - endPos) + line.substring(len - startPos) + '\n';
+                        }
                     }
-                } else {
-                    let len = line.length;
-                    if (mode === 'extract') {
-                        result += line.substring(len - endPos, len - startPos) + '\n';
-                    } else { // remove
-                        result += line.substring(0, len - endPos) + line.substring(len - startPos) + '\n';
+                }
+            } else {
+                const delimiter = document.getElementById("delimiter").value;
+                const delimiterMode = document.querySelector('input[name="delimiterMode"]:checked').value;
+                const occurrence = document.querySelector('input[name="occurrence"]:checked').value;
+
+                if (!delimiter) {
+                    alert('Please enter a delimiter character');
+                    return;
+                }
+
+                for (let line of lines) {
+                    const idx = occurrence === 'first' ? line.indexOf(delimiter) : line.lastIndexOf(delimiter);
+
+                    if (idx === -1) {
+                        result += line + '\n';
+                    } else {
+                        if (delimiterMode === 'before') {
+                            result += line.substring(0, idx) + '\n';
+                        } else {
+                            result += line.substring(idx + delimiter.length) + '\n';
+                        }
                     }
                 }
             }
