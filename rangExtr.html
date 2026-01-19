@@ -57,7 +57,18 @@
                                 placeholder="Paste your text here..." oninput="validatePositions()"></textarea>
                     </div>
                     
-                    <div id="preview" class="overflow-x-auto font-mono whitespace-pre text-left text-gray-600 leading-relaxed"></div>
+                    <div class="flex items-center gap-4">
+                        <div id="preview" class="overflow-x-auto font-mono whitespace-pre text-left text-gray-600 leading-relaxed flex-1"></div>
+                        <div class="flex items-center gap-2 text-sm text-gray-600">
+                            <label for="previewRows">Preview rows:</label>
+                            <select id="previewRows" class="p-1 border border-gray-300 rounded text-sm" onchange="updatePreview()">
+                                <option value="3" selected>3</option>
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="0">All</option>
+                            </select>
+                        </div>
+                    </div>
 
                     <!-- Extraction Type Toggle -->
                     <div class="flex flex-wrap gap-6 py-2 border-b border-gray-200 pb-4">
@@ -204,6 +215,8 @@
         function updatePreview() {
             const input = document.getElementById("inTxt").value;
             const extractType = document.querySelector('input[name="extractType"]:checked').value;
+            const previewRowsValue = parseInt(document.getElementById("previewRows").value);
+            const maxRows = previewRowsValue === 0 ? Infinity : previewRowsValue;
 
             const lines = input.split('\n').filter(line => line.trim());
             if (lines.length === 0) {
@@ -218,7 +231,7 @@
                 const endPos = parseInt(document.getElementById("endPos").value) || 0;
                 const direction = document.querySelector('input[name="direction"]:checked').value;
 
-                for (let i = 0; i < Math.min(3, lines.length); i++) {
+                for (let i = 0; i < Math.min(maxRows, lines.length); i++) {
                     const line = lines[i];
                     if (direction === 'left') {
                         preview += escapeHtml(line.substring(0, startPos)) +
@@ -245,7 +258,7 @@
                     return;
                 }
 
-                for (let i = 0; i < Math.min(3, lines.length); i++) {
+                for (let i = 0; i < Math.min(maxRows, lines.length); i++) {
                     const line = lines[i];
                     const idx = occurrence === 'first' ? line.indexOf(delimiter) : line.lastIndexOf(delimiter);
 
@@ -342,5 +355,6 @@
         }
     </script>
 </body>
+
 
 </html>
