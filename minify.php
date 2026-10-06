@@ -1,4 +1,4 @@
-<!-- v2.3 -->
+<!-- v2.4 -->
 <?php
 // Process form submission
 $minified = '';
@@ -20,32 +20,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['js_code'])) {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
         CURLOPT_HTTPHEADER => ["Content-Type: application/x-www-form-urlencoded"],
-        CURLOPT_POSTFIELDS => http_build_query(["input" => $original])
+        CURLOPT_POSTFIELDS => http_build_query(["input" => $original]),
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 20,
     ]);
     
-    // Execute cURL request and get response
     $minified = curl_exec($ch);
-    
-    // Check for errors
-    if (curl_errno($ch)) {
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $apiErr = json_decode((string) $minified, true)['errors'][0] ?? null;
+
+    if ($minified === false) {
         $error = 'Error: ' . curl_error($ch);
-        $minified = '';
-    } else {
-        // Check if response is a JSON error
-        $jsonResponse = json_decode($minified, true);
-        if (json_last_error() === JSON_ERROR_NONE && isset($jsonResponse['errors'])) {
-            // Extract error details from JSON
-            $errorObj = $jsonResponse['errors'][0];
-            $error = $errorObj['title'] . ': ' . $errorObj['detail'];
-            $minified = '';
-        } else {
-            // Transform double spaces into single spaces
-            $minified = preg_replace('/\s{2,}/', ' ', $minified);
-        }
+    } elseif ($apiErr) {
+        $error = ($apiErr['title'] ?? 'Error') . ': ' . ($apiErr['detail'] ?? '');
+    } elseif ($status !== 200) {
+        $error = "API error (HTTP $status)";
     }
-    
-    // Close cURL session
-    curl_close($ch);
+    $minified = $error ? '' : trim($minified);
 }
 ?>
 
@@ -146,18 +137,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['js_code'])) {
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Minified Code</h2>
             
             <div class="relative mb-4">
-                <input 
-                    type="text" 
-                    id="minified_code" 
-                    value="<?php echo htmlspecialchars($minified); ?>"
-                    readonly 
-                    class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
-                />
+                <textarea id="minified_code" readonly rows="6" class="w-full p-3 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm break-all"><?= htmlspecialchars($minified) ?></textarea>
                 
                 <button 
                     type="button" 
                     id="copyBtn" 
-                    class="absolute top-1/2 right-2 transform -translate-y-1/2 px-3 py-1 bg-gray-700 text-white text-sm rounded hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors duration-200"
+                    class="absolute top-2 right-2 px-3 py-1 bg-gray-700 text-white text-sm rounded hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors duration-200"
                 >
                     Copy
                 </button>
