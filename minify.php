@@ -1,4 +1,4 @@
-<!-- v2.4 -->
+<!-- v2.4.1 -->
 <?php
 // Process form submission
 $minified = '';
@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['js_code'])) {
                 extend: {
                     colors: {
                         primary: '#006E81',
-                        'primary-dark': '#006E81',
+                        'primary-dark': '#005867',
                         secondary: '#814000',
                     }
                 }
@@ -151,12 +151,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['js_code'])) {
             <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-gray-50 rounded-lg p-3 text-center">
                     <p class="text-sm text-gray-500">Original</p>
-                    <p class="text-lg font-medium text-gray-800"><?php echo number_format(strlen($original)); ?> chars</p>
+                    <p class="text-lg font-medium text-gray-800"><?php echo number_format(strlen($original)); ?> bytes</p>
                 </div>
                 
                 <div class="bg-gray-50 rounded-lg p-3 text-center">
                     <p class="text-sm text-gray-500">Minified</p>
-                    <p class="text-lg font-medium text-gray-800"><?php echo number_format(strlen($minified)); ?> chars</p>
+                    <p class="text-lg font-medium text-gray-800"><?php echo number_format(strlen($minified)); ?> bytes</p>
                 </div>
                 
                 <div class="bg-green-50 rounded-lg p-3 text-center">
@@ -210,45 +210,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['js_code'])) {
                     const minifiedCode = document.getElementById('minified_code');
                     minifiedCode.select();
                     
-                    try {
-                        // Modern clipboard API
-                        navigator.clipboard.writeText(minifiedCode.value)
-                            .then(() => {
-                                // Change button text temporarily
-                                const originalText = copyBtn.textContent;
-                                copyBtn.textContent = 'Copied!';
-                                
-                                // Reset button text after 2 seconds
-                                setTimeout(function() {
-                                    copyBtn.textContent = originalText;
-                                }, 2000);
-                            })
-                            .catch(err => {
-                                // Fallback to old method if clipboard API fails
-                                document.execCommand('copy');
-                                
-                                // Change button text temporarily
-                                const originalText = copyBtn.textContent;
-                                copyBtn.textContent = 'Copied!';
-                                
-                                // Reset button text after 2 seconds
-                                setTimeout(function() {
-                                    copyBtn.textContent = originalText;
-                                }, 2000);
-                            });
-                    } catch (err) {
-                        // Fallback to old method if clipboard API is not available
-                        document.execCommand('copy');
-                        
-                        // Change button text temporarily
-                        const originalText = copyBtn.textContent;
+                    const flash = () => {
                         copyBtn.textContent = 'Copied!';
-                        
-                        // Reset button text after 2 seconds
-                        setTimeout(function() {
-                            copyBtn.textContent = originalText;
-                        }, 2000);
-                    }
+                        setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+                    };
+
+                    // Clipboard API, fallback to execCommand when unavailable or denied
+                    (navigator.clipboard?.writeText(minifiedCode.value) ?? Promise.reject())
+                        .catch(() => document.execCommand('copy'))
+                        .then(flash);
                 });
             }
         });
